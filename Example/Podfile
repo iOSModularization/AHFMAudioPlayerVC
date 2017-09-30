@@ -9,6 +9,9 @@ target 'AHFMAudioPlayerVC_Example' do
   pod 'AHAudioPlayer'
   pod 'AHFMAudioPlayerManager'
   
+  pod 'AHFMAudioPlayerVCServices'
+  pod 'AHFMAudioPlayerVCManager'
+  
   pod 'AHServiceRouter'
   
   pod 'AHFMNetworking'

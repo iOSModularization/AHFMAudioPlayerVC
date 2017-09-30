@@ -601,7 +601,7 @@ extension AHFMAudioPlayerVC {
                 
                 // check if this currently displaying banner imageView is for thisIndex
                 let thisIndex = index
-                guard thisIndex == self?.bannerView.index else {return}
+                guard thisIndex == strongSelf.bannerView.index else {return}
                 
                 guard let image = image else {return}
                 guard let bannerView = strongSelf.bannerView else {return}

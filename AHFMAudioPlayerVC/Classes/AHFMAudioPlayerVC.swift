@@ -41,7 +41,7 @@ public struct AHFMAudioPlayerVCPlayerItem {
     public var duration: TimeInterval?
     
     public var lastPlayedTime: TimeInterval?
-    
+    public var localFilePath: String?
     public init(dict: [String: Any]) {
         self.albumnId = dict["albumnId"] as! Int
         self.trackId = dict["trackId"] as! Int
@@ -55,6 +55,7 @@ public struct AHFMAudioPlayerVCPlayerItem {
         self.trackTitle = dict["trackTitle"] as? String
         self.duration = dict["duration"] as? TimeInterval
         self.lastPlayedTime = dict["lastPlayedTime"] as? TimeInterval
+        self.localFilePath = dict["localFilePath"] as? String
     }
 }
 
@@ -173,24 +174,16 @@ extension AHFMAudioPlayerVC {
         }
         let trackId = playerItem.trackId
         
-        if AHAudioPlayerManager.shared.state == .playing {
-            if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,trackId == playingTrackId{
-                // player is playing the same track, ignore
-                self.playBtn.isSelected = true
-                return
-            }
-        }else{
-            self.playBtn.isSelected = false
-        }
-        
-        // here, the player is either, playing different track or pausing for save track in playerItem.
-        
-        if AHAudioPlayerManager.shared.state == .paused,
-            let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,
-            trackId == playingTrackId{
+        if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,
+            trackId == playingTrackId {
             
-            self.shouldUpdateSlider = false
-            self.playBtn.isSelected = false
+            if AHAudioPlayerManager.shared.state == .loading || AHAudioPlayerManager.shared.state == .playing {
+                self.playBtn.isSelected = false
+            }else{
+                // paused or something else
+                self.playBtn.isSelected = true
+            }
+            
             return
         }
         
@@ -207,7 +200,7 @@ extension AHFMAudioPlayerVC {
             
             let percent = lastPlayedTime / duration
             
-            guard percent > 1.0 else {
+            guard percent <= 1.0 else {
                 print("ERROR trackId:\(trackId): lastPlayedTime is bigger than duration")
                 return
             }
@@ -381,9 +374,13 @@ extension AHFMAudioPlayerVC {
         guard let playerItem = self.playerItem else {
             return
         }
-        guard let url = URL(string: playerItem.audioURL) else {
-            print("playerItem url is nil")
-            return
+        
+        var url: URL?
+        
+        if playerItem.localFilePath != nil {
+            url = URL(fileURLWithPath: playerItem.localFilePath!)
+        }else{
+            url = URL(string: playerItem.audioURL)
         }
         
         rateBtn.setTitle("\(AHAudioRateSpeed.one.rawValue)x", for: .normal)
@@ -400,7 +397,7 @@ extension AHFMAudioPlayerVC {
         }
         
         
-        AHAudioPlayerManager.shared.play(trackId: playerItem.trackId, trackURL: url, toTime: toTime)
+        AHAudioPlayerManager.shared.play(trackId: playerItem.trackId, trackURL: url!, toTime: toTime)
     }
     func pause() {
         AHAudioPlayerManager.shared.pause()
@@ -461,7 +458,7 @@ extension AHFMAudioPlayerVC {
         // add notifications for audioPlayer
         let changeStateHandler = NotificationCenter.default.addObserver(forName: AHAudioPlayerDidChangeState, object: nil, queue: nil) { (_) in
             
-            if AHAudioPlayerManager.shared.state == .playing {
+            if AHAudioPlayerManager.shared.state == .playing || AHAudioPlayerManager.shared.state == .loading  {
                 if self.shouldUpdateSlider == false {
                     self.shouldUpdateSlider = true
                 }

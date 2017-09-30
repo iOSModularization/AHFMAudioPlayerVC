@@ -583,48 +583,43 @@ extension AHFMAudioPlayerVC {
         guard let barStyle = self.bannerBarStyle else {
             return
         }
-        bannerView.setup(imageCount: 3, Style: barStyle) {[weak self] (imageView, index) in
-            guard self != nil else {return}
-            guard let playerItem = self?.playerItem else {return}
-            
-            if index == 1 {
-                let image = UIImage(name: "shameless-ad", user: self!)
-                imageView.image = image
-                return
-            }
-            
-            let urlStr = index == 0 ? playerItem.fullCover : playerItem.thumbCover
-            let url = URL(string: urlStr ?? "")
-            
-            imageView.sd_setImage(with: url, completed: {[weak self] (image, _, _, _) in
-                guard let strongSelf = self else {return}
-                
-                // check if this currently displaying banner imageView is for thisIndex
-                let thisIndex = index
-                let bannerIndex = strongSelf.bannerView.index
-                if thisIndex != bannerIndex{
-                    return
-                }
-                
-                guard let image = image else {return}
-                guard let bannerView = strongSelf.bannerView else {return}
-                if image.size.height > bannerView.frame.height ||
-                    image.size.width > bannerView.frame.width {
-                    // if image is larger than the view, than scaleAspectFit
-                    imageView.contentMode = .scaleAspectFit
-                }else{
-                    // if image is smaller than the view, than let it be
-                    imageView.contentMode = .center
-                }
-                
-                imageView.image = image
-            })
-            
-        }
+        bannerView.setup(imageCount: 3, Style: barStyle)
     }
 }
 
 extension AHFMAudioPlayerVC: AHBannerViewDelegate {
+    public func bannerViewForImage(_ bannerView: AHBannerView, imageView: UIImageView, atIndex: Int) {
+        
+        guard let playerItem = self.playerItem else {return}
+        
+        if atIndex == 1 {
+            let image = UIImage(name: "shameless-ad", user: self)
+            imageView.image = image
+            return
+        }
+        
+        let urlStr = atIndex == 0 ? playerItem.fullCover : playerItem.thumbCover
+        let url = URL(string: urlStr ?? "")
+        
+        imageView.sd_setImage(with: url, completed: {[weak self] (image, _, _, _) in
+            
+            // check if this currently displaying banner imageView is for thisIndex
+            guard atIndex == self?.bannerView.index else {return}
+            guard let image = image else {return}
+            
+            if image.size.height > bannerView.frame.height ||
+                image.size.width > bannerView.frame.width {
+                // if image is larger than the view, than scaleAspectFit
+                imageView.contentMode = .scaleAspectFit
+            }else{
+                // if image is smaller than the view, than let it be
+                imageView.contentMode = .center
+            }
+            
+            imageView.image = image
+        })
+    }
+
     public func bannerView(_ bannerView: AHBannerView, didTapped atIndex: Int){
         guard let playerItem = self.playerItem else {return}
         manager?.audioPlayerVCAlbumnCoverTapped(self, atIndex: atIndex, trackId: playerItem.trackId, albumnId: playerItem.albumnId)

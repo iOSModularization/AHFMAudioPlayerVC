@@ -9,6 +9,16 @@ target 'AHFMAudioPlayerVC_Example' do
   pod 'AHAudioPlayer'
   pod 'AHFMAudioPlayerManager'
   
+  pod 'AHFMEpisodeListVC'
+  pod 'AHFMEpisodeListVCManager'
+  
+  pod 'AHFMHistoryVC'
+  pod 'AHFMHistoryVCManager'
+  
+  pod 'AHFMBottomPlayer'
+  pod 'AHFMBottomPlayerManager'
+  pod 'AHFMBottomPlayerServices'
+  
   pod 'AHFMAudioPlayerVCServices'
   pod 'AHFMAudioPlayerVCManager'
   

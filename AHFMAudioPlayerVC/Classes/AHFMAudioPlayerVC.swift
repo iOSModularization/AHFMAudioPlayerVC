@@ -24,6 +24,9 @@ import SDWebImage
     func audioPlayerVCFetchTrack(_ vc: AHFMAudioPlayerVC, trackId: Int)
     func audioPlayerVCFetchNextTrack(_ vc: AHFMAudioPlayerVC, trackId: Int, albumnId: Int)
     func audioPlayerVCFetchPreviousTrack(_ vc: AHFMAudioPlayerVC, trackId: Int, albumnId: Int)
+    
+    func viewWillAppear(_ vc: UIViewController)
+    func viewWillDisappear(_ vc: UIViewController)
 }
 
 // The minimum seconds that lastPlayedTime has to reach to make audioPlayVC to play for it.
@@ -88,7 +91,7 @@ public class AHFMAudioPlayerVC: UIViewController {
     fileprivate var timer: Timer?
 
     // Should seek to play to lastPlayedTime or not
-    fileprivate var playLastTimeMode = false
+    fileprivate var playLastTimeMode = false 
     
     /// Should the timer update slider or not
     fileprivate var shouldUpdateSlider = true
@@ -164,7 +167,7 @@ extension AHFMAudioPlayerVC {
         
         navigationController?.setNavigationBarHidden(true, animated: false)
         manager?.audioPlayerVCFetchInitialTrack(self)
-        fireTimer()
+        manager?.viewWillAppear(self)
     }
     
     /// This is the point where the currentEpisode/currentShow gets ready and can be played.
@@ -174,25 +177,7 @@ extension AHFMAudioPlayerVC {
         }
         let trackId = playerItem.trackId
         
-        if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,
-            trackId == playingTrackId {
-            
-            if AHAudioPlayerManager.shared.state == .loading || AHAudioPlayerManager.shared.state == .playing {
-                self.playBtn.isSelected = false
-            }else{
-                // paused or something else
-                self.playBtn.isSelected = true
-            }
-            
-            return
-        }
-        
-        
-        // 1. pausing different track. 
-        // 2. playing different track.
-        // We ignore the one playing in the player, and play our current track.
-        
-        if let lastPlayedTime = playerItem.lastPlayedTime, let duration = playerItem.duration {
+        if let lastPlayedTime = playerItem.lastPlayedTime, let duration = playerItem.duration, duration > 0, lastPlayedTime > 0 {
             // the track has cached progress, lastPlayedTime.
             
             self.shouldUpdateSlider = false
@@ -207,24 +192,61 @@ extension AHFMAudioPlayerVC {
             
             self.playLastTimeMode = true
             self.progressSlider.value = Float(percent)
-            
+            self.startTimeLabel.text = "\(String.secondToTime(lastPlayedTime))"
+            self.totalTimeLabel.text = "\(String.secondToTime(duration))"
+            let speedStr = AHAudioPlayerManager.shared.rate.rawValue > 0 ? "\(AHAudioPlayerManager.shared.rate.rawValue)x" : "1.0x"
+            rateBtn.setTitle(speedStr, for: .normal)
         }else{
             // no lastPlayedTime, play from beginning
         }
         
+        if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,
+            trackId == playingTrackId {
+            
+            if AHAudioPlayerManager.shared.state == .loading || AHAudioPlayerManager.shared.state == .playing {
+                self.playLastTimeMode = false
+                self.shouldUpdateSlider = true
+                self.playBtn.isSelected = true
+                fireTimer()
+            }else{
+                // paused or something else
+                self.playBtn.isSelected = false
+            }
+            
+            return
+        }
         
-        playBtnTapped(playBtn)
+        
+        
+        self.shouldUpdateSlider = false
+        if AHAudioPlayerManager.shared.state == .none || AHAudioPlayerManager.shared.state == .stopped {
+            self.playBtn.isSelected = false
+            
+        }else{
+            self.playBtn.isSelected = true
+            playBtnTapped(playBtn)
+        }
+        
     }
     
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
-        navigationController?.setNavigationBarHidden(false, animated: false)
+        if self.presentedViewController != nil {
+            // there's a vc presented by this vc
+        }else{
+            navigationController?.setNavigationBarHidden(false, animated: false)
+        }
+        
+        
+        manager?.viewWillDisappear(self)
     }
     
     public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         timer?.invalidate()
+        
+
     }
     
     
@@ -321,9 +343,12 @@ extension AHFMAudioPlayerVC {
     }
     
     @IBAction func sliderDragInside(_ sender: UISlider) {
-        let duration = AHAudioPlayerManager.shared.duration
-        guard duration > 0.0 else {
+        guard let playerItem = self.playerItem else {
             return
+        }
+        var duration = AHAudioPlayerManager.shared.duration
+        if duration < 0.1, let durationA = playerItem.duration {
+            duration = durationA
         }
         guard sender.value >= 0.0 && sender.value <= 1.0 else {
             return
@@ -332,7 +357,7 @@ extension AHFMAudioPlayerVC {
         startTimeLabel.text = String.secondToTime(seconds)
     }
     @IBAction func progressDidChange(_ sender: UISlider) {
-        shouldUpdateSlider = true
+
         startTimeLabel.textColor = labelNormalColor
         guard sender.value >= 0.0 && sender.value <= 1.0 else {
             return
@@ -342,25 +367,27 @@ extension AHFMAudioPlayerVC {
         }
         let trackId = playerItem.trackId
 
-        if self.playLastTimeMode {
-            self.playLastTimeMode = false
+        self.playLastTimeMode = true
+        self.shouldUpdateSlider = false
+        if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,trackId == playingTrackId {
+            // player is playing the same track, seek and resume directly
+            // seek first
+            AHAudioPlayerManager.shared.seekToPercent(Double(sender.value))
+            
+            // it's already paused in sliderTouchDown(_:) above, for preventing slider jump to begining point.
+            // resume here
+            resume()
+            return
+        }
+        // not the same track, play this current one anyway, at the chosen progress from the slider though.
+        AHAudioPlayerManager.shared.stop()
+        if let duration = playerItem.duration {
+            let toTime = Double(self.progressSlider.value) * duration
+            play(toTime)
+        }else{
+            play()
         }
         
-        if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId {
-            if trackId == playingTrackId {
-                // player is playing the same track, seek and resume directly
-                // seek first
-                AHAudioPlayerManager.shared.seekToPercent(Double(sender.value))
-                
-                // it's already paused in sliderTouchDown(_:) above, for preventing slider jump to begining point.
-                // resume here
-                resume()
-            }else{
-                // not the same track, play this current one anyway, at the chosen progress from the slider though.
-                AHAudioPlayerManager.shared.stop()
-                play()
-            }
-        }
         
         
     }
@@ -370,7 +397,7 @@ extension AHFMAudioPlayerVC {
 extension AHFMAudioPlayerVC {
     
     /// play from beginning if there's no lastPlayedTime
-    func play() {
+    func play(_ toTime: TimeInterval? = nil) {
         guard let playerItem = self.playerItem else {
             return
         }
@@ -386,15 +413,16 @@ extension AHFMAudioPlayerVC {
         rateBtn.setTitle("\(AHAudioRateSpeed.one.rawValue)x", for: .normal)
         
         stop()
-        var toTime: TimeInterval? = nil
-        if let lastPlayedTime = playerItem.lastPlayedTime,
-            let duration = playerItem.duration,
-        lastPlayedTime > 0.0, duration > 0.0{
-            toTime = lastPlayedTime
-            
-            self.playLastTimeMode = false
-
+        var toTime = toTime
+        if toTime == nil {
+            if let lastPlayedTime = playerItem.lastPlayedTime,
+                let duration = playerItem.duration,
+                lastPlayedTime > 0.0, duration > 0.0{
+                toTime = lastPlayedTime
+                
+            }
         }
+        
         
         
         AHAudioPlayerManager.shared.play(trackId: playerItem.trackId, trackURL: url!, toTime: toTime)
@@ -457,10 +485,19 @@ extension AHFMAudioPlayerVC {
     func setup(){
         // add notifications for audioPlayer
         let changeStateHandler = NotificationCenter.default.addObserver(forName: AHAudioPlayerDidChangeState, object: nil, queue: nil) { (_) in
-            
-            if AHAudioPlayerManager.shared.state == .playing || AHAudioPlayerManager.shared.state == .loading  {
+            if AHAudioPlayerManager.shared.state == .playing {
+                if self.playLastTimeMode {
+                    self.playLastTimeMode = false
+                }
                 if self.shouldUpdateSlider == false {
                     self.shouldUpdateSlider = true
+                    self.fireTimer()
+                }
+                self.playBtn.isSelected = true
+            }
+            else if AHAudioPlayerManager.shared.state == .loading  {
+                if self.playLastTimeMode {
+                    self.playLastTimeMode = false
                 }
                 self.playBtn.isSelected = true
             }else if AHAudioPlayerManager.shared.state == .paused {

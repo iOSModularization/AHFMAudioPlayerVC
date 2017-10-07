@@ -89,9 +89,9 @@ public class AHFMAudioPlayerVC: UIViewController {
     fileprivate var notificationHandlers = [NSObjectProtocol]()
     
     fileprivate var timer: Timer?
-
+    
     // Should seek to play to lastPlayedTime or not
-    fileprivate var playLastTimeMode = false 
+    fileprivate var playLastTimeMode = false
     
     /// Should the timer update slider or not
     fileprivate var shouldUpdateSlider = true
@@ -99,7 +99,7 @@ public class AHFMAudioPlayerVC: UIViewController {
     /// Those two colors are for startTimeLabel and DuratinLabel
     fileprivate var labelNormalColor = UIColor.white
     fileprivate var labelSelectedColor = UIColor.red
-
+    
     fileprivate var currentRateSpeed: AHAudioRateSpeed {
         return AHAudioPlayerManager.shared.rate
     }
@@ -217,16 +217,15 @@ extension AHFMAudioPlayerVC {
         }
         
         
-        
+        self.totalTimeLabel.text = "\(String.secondToTime(playerItem.duration ?? 0.0))"
         self.shouldUpdateSlider = false
         if AHAudioPlayerManager.shared.state == .none || AHAudioPlayerManager.shared.state == .stopped {
             self.playBtn.isSelected = false
             
         }else{
             self.playBtn.isSelected = true
-            playBtnTapped(playBtn)
         }
-        
+        playBtnTapped(playBtn)
     }
     
     public override func viewWillDisappear(_ animated: Bool) {
@@ -246,7 +245,7 @@ extension AHFMAudioPlayerVC {
         super.viewDidDisappear(animated)
         timer?.invalidate()
         
-
+        
     }
     
     
@@ -299,14 +298,14 @@ extension AHFMAudioPlayerVC {
         
         if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,
             trackId == playingTrackId {
-                
-                if AHAudioPlayerManager.shared.state == .playing {
-                    sender.isSelected = false
-                    pause()
-                }else{
-                    sender.isSelected = true
-                    resume()
-                }
+            
+            if AHAudioPlayerManager.shared.state == .playing {
+                sender.isSelected = false
+                pause()
+            }else{
+                sender.isSelected = true
+                resume()
+            }
             
         }else{
             // not the same track, play this current one anyway, at the chosen progress from the slider though.
@@ -357,7 +356,7 @@ extension AHFMAudioPlayerVC {
         startTimeLabel.text = String.secondToTime(seconds)
     }
     @IBAction func progressDidChange(_ sender: UISlider) {
-
+        
         startTimeLabel.textColor = labelNormalColor
         guard sender.value >= 0.0 && sender.value <= 1.0 else {
             return
@@ -366,7 +365,7 @@ extension AHFMAudioPlayerVC {
             return
         }
         let trackId = playerItem.trackId
-
+        
         self.playLastTimeMode = true
         self.shouldUpdateSlider = false
         if let playingTrackId = AHAudioPlayerManager.shared.playingTrackId,trackId == playingTrackId {
@@ -603,7 +602,7 @@ extension AHFMAudioPlayerVC {
     
     fileprivate func setupModel() {
         guard let playerItem = self.playerItem else {
-                return
+            return
         }
         
         showTitleView.title = playerItem.albumnTitle ?? ""
@@ -653,7 +652,7 @@ extension AHFMAudioPlayerVC: AHBannerViewDelegate {
             imageView.image = image
         })
     }
-
+    
     public func bannerView(_ bannerView: AHBannerView, didTapped atIndex: Int){
         guard let playerItem = self.playerItem else {return}
         manager?.audioPlayerVCAlbumnCoverTapped(self, atIndex: atIndex, trackId: playerItem.trackId, albumnId: playerItem.albumnId)

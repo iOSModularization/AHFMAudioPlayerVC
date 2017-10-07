@@ -216,7 +216,9 @@ extension AHFMAudioPlayerVC {
             return
         }
         
-        
+        self.progressSlider.loadedProgress = 0.0
+        self.progressSlider.value = Float(0.0)
+        self.startTimeLabel.text = "\(String.secondToTime(0.0))"
         self.totalTimeLabel.text = "\(String.secondToTime(playerItem.duration ?? 0.0))"
         self.shouldUpdateSlider = false
         if AHAudioPlayerManager.shared.state == .none || AHAudioPlayerManager.shared.state == .stopped {

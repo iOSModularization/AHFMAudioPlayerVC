@@ -537,7 +537,6 @@ extension AHFMAudioPlayerVC {
         bannerStyle.isPagingEnabled = true
         bannerStyle.showIndicator = false
         bannerStyle.showPageControl = true
-        bannerStyle.isPageControlSeparated = true
         bannerStyle.bottomHeight = 20.0
         bannerStyle.pageControlSelectedColor = UIColor.white
         self.bannerBarStyle = bannerStyle
